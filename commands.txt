@@ -4,6 +4,11 @@ npm install -g @nestjs/cli
 nest new nestjs-trader
 cd nestjs-trader 
 npm i --save @nestjs/config
+npm i mongoose @nestjs/mongoose
+npm i lodash 
+npm i bcrypt
+npm i passport passport-jwt @nestjs/passport @nestjs/jwt 
+npm i --include=dev @types/passport-jwt @types/jsonwebtoken @types/lodash
 
-
+## Run
 npm run start:dev
