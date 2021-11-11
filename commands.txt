@@ -1,0 +1,9 @@
+## Commands Used
+
+npm install -g @nestjs/cli
+nest new nestjs-trader
+cd nestjs-trader 
+npm i --save @nestjs/config
+
+
+npm run start:dev
