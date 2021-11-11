@@ -17,6 +17,6 @@ async function bootstrap() {
     }),
   );
   app.useGlobalInterceptors(new LoggingInterceptor());
-  await app.listen(config.get('LISTEN_PORT'));
+  await app.listen(config.get('LISTEN_PORT') || 3000);
 }
 bootstrap();
