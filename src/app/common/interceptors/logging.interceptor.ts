@@ -4,7 +4,7 @@ import {
   ExecutionContext,
   CallHandler,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 
 @Injectable()
@@ -27,7 +27,7 @@ export class LoggingInterceptor implements NestInterceptor {
         console.error(
           `${response.statusCode} | [${method}] ${url} - ${delay}ms`,
         );
-        return error;
+        return throwError(error);
       }),
     );
   }

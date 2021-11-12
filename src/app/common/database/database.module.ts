@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 
 import * as schemas from './schemas';
 import { DatabaseService } from './database.service';
+import * as services from './services';
+
+const providers = [DatabaseService, services.AccountService];
 
 @Global()
 @Module({
@@ -20,10 +23,14 @@ import { DatabaseService } from './database.service';
       inject: [ConfigService],
     }),
     MongooseModule.forFeature([
-      { name: 'Account', schema: schemas.AccountSchema },
+      {
+        name: 'Account',
+        schema: schemas.AccountSchema,
+        collection: 'accounts',
+      },
     ]),
   ],
-  providers: [DatabaseService],
-  exports: [DatabaseService],
+  providers,
+  exports: providers,
 })
 export class DatabaseModule {}
