@@ -29,27 +29,6 @@ export class AccountController {
     return await this.accountService.create(data);
   }
 
-  @Put('/:id/apply-pattern')
-  @UseGuards(JwtAuthGuard)
-  async applyPattern(
-    @Param('id') id: string,
-    @Body() data: SaveAccountPatternInput,
-  ) {
-    if (!isMongoId(id)) {
-      throw new BadRequestException(['Invalid account.']);
-    }
-    return await this.accountService.applyPattern(new Types.ObjectId(id), data);
-  }
-
-  @Put('/:id/update')
-  @UseGuards(JwtAuthGuard)
-  async update(@Param('id') id: string, @Body() data: SaveAccountInput) {
-    if (!isMongoId(id)) {
-      throw new BadRequestException(['Invalid account.']);
-    }
-    return await this.accountService.update(new Types.ObjectId(id), data);
-  }
-
   @Get('/list')
   @UseGuards(JwtAuthGuard)
   async list() {
@@ -75,5 +54,26 @@ export class AccountController {
       throw new BadRequestException(['Invalid account.']);
     }
     return await this.accountService.retrieve(new Types.ObjectId(id));
+  }
+
+  @Put('/:id/apply-pattern')
+  @UseGuards(JwtAuthGuard)
+  async applyPattern(
+    @Param('id') id: string,
+    @Body() data: SaveAccountPatternInput,
+  ) {
+    if (!isMongoId(id)) {
+      throw new BadRequestException(['Invalid account.']);
+    }
+    return await this.accountService.applyPattern(new Types.ObjectId(id), data);
+  }
+
+  @Put('/:id/update')
+  @UseGuards(JwtAuthGuard)
+  async update(@Param('id') id: string, @Body() data: SaveAccountInput) {
+    if (!isMongoId(id)) {
+      throw new BadRequestException(['Invalid account.']);
+    }
+    return await this.accountService.update(new Types.ObjectId(id), data);
   }
 }

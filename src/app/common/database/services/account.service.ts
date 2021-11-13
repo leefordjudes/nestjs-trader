@@ -104,7 +104,7 @@ export class AccountService {
       magic: account.magic,
       application: account.application,
       pattern: account.pattern,
-      confif: JSON.parse(account.config),
+      confif: account.config ? JSON.parse(account.config) : undefined,
     };
     return result;
   }
