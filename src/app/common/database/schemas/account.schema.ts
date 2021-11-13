@@ -26,6 +26,12 @@ export class Account {
   @Prop({ type: String, default: 'MetaApi' })
   application!: string;
 
+  @Prop({ type: String, default: undefined })
+  pattern?: string;
+
+  @Prop({ type: String, default: undefined })
+  config?: string;
+
   @Prop({ type: Date, required: true })
   createdAt!: Date;
 

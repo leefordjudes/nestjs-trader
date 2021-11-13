@@ -6,11 +6,16 @@ import {
   Param,
   BadRequestException,
   Get,
+  Query,
 } from '@nestjs/common';
 import { isMongoId } from 'class-validator';
 import { Types } from 'mongoose';
 
-import { AccountService, SaveAccountInput } from '../common/database/services';
+import {
+  AccountService,
+  SaveAccountInput,
+  SaveAccountPatternInput,
+} from '../common/database/services';
 
 @Controller('account')
 export class AccountController {
@@ -19,6 +24,17 @@ export class AccountController {
   @Post('/create')
   async create(@Body() data: SaveAccountInput) {
     return await this.accountService.create(data);
+  }
+
+  @Put('/:id/apply-pattern')
+  async applyPattern(
+    @Param('id') id: string,
+    @Body() data: SaveAccountPatternInput,
+  ) {
+    if (!isMongoId(id)) {
+      throw new BadRequestException(['Invalid account.']);
+    }
+    return await this.accountService.applyPattern(new Types.ObjectId(id), data);
   }
 
   @Put('/:id/update')
@@ -32,6 +48,16 @@ export class AccountController {
   @Get('/list')
   async list() {
     return await this.accountService.list();
+  }
+
+  @Get('/config')
+  async retriveConfig(@Query('method') method: string) {
+    return await this.accountService.retriveConfig(method);
+  }
+
+  @Get('/pattern-list')
+  async patternList() {
+    return await this.accountService.patternList();
   }
 
   @Get('/:id')

@@ -6,17 +6,25 @@ import {
 import { ConfigService } from '@nestjs/config';
 
 import { Types } from 'mongoose';
-import { IsNotEmpty, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 import { DatabaseService } from '../database.service';
 import { Account } from '../schemas';
+import { configurations } from '../../../shared/fixtures/config/config';
+import { METHODS } from 'src/app/shared/fixtures/method';
 
 @Injectable()
 export class AccountService {
-  constructor(private db: DatabaseService) {}
+  constructor(private db: DatabaseService, private config: ConfigService) {}
   async create(data: SaveAccountInput) {
-    const config = new ConfigService();
-    const provisioningProfile = config.get('PROVISIONING_PROFILE');
+    const provisioningProfile = this.config.get('PROVISIONING_PROFILE');
     const account = new Account({
       name: data.name,
       login: data.login,
@@ -51,12 +59,14 @@ export class AccountService {
   }
 
   async update(id: Types.ObjectId, data: SaveAccountInput) {
+    const provisioningProfile = this.config.get('PROVISIONING_PROFILE');
     const account = await this.findById(id);
     account.name = data.name;
     account.login = data.login;
     account.password = data.password;
     account.server = data.server;
     account.updatedAt = new Date();
+    account.provisioningProfile = provisioningProfile;
     const updatedAccount = await this.db.accountModel.findOneAndUpdate(
       { _id: id },
       account,
@@ -93,6 +103,8 @@ export class AccountService {
       provisioningProfile: account.provisioningProfile,
       magic: account.magic,
       application: account.application,
+      pattern: account.pattern,
+      confif: JSON.parse(account.config),
     };
     return result;
   }
@@ -109,21 +121,129 @@ export class AccountService {
       };
     });
   }
+
+  async retriveConfig(method?: string) {
+    if (method && ['M1', 'M2'].includes(method)) {
+      return configurations.find((m) => m.code === method);
+    }
+    return configurations;
+  }
+
+  async patternList() {
+    return METHODS;
+  }
+
+  async applyPattern(id: Types.ObjectId, data: SaveAccountPatternInput) {
+    const account = await this.findById(id);
+    account.pattern = data.pattern;
+    account.config = JSON.stringify(data.config);
+    const updatedAccount = await this.db.accountModel.findOneAndUpdate(
+      { _id: id },
+      account,
+      {
+        new: true,
+        overwrite: true,
+        runValidators: true,
+      },
+    );
+    const result: SaveRetrieveAccountOutput = {
+      id: updatedAccount.id,
+      name: updatedAccount.name,
+      login: updatedAccount.login,
+      password: updatedAccount.password,
+      server: updatedAccount.server,
+      provisioningProfile: updatedAccount.provisioningProfile,
+      magic: updatedAccount.magic,
+      application: updatedAccount.application,
+      pattern: updatedAccount.pattern,
+      confif: JSON.parse(updatedAccount.config),
+    };
+    return result;
+  }
+}
+
+export enum AccountPattern {
+  M1 = 'M1',
+  M2 = 'M2',
 }
 
 export class SaveAccountInput {
   @IsNotEmpty()
-  @MaxLength(50)
   name!: string;
 
   @IsNotEmpty()
+  @IsString()
   login!: string;
 
   @IsNotEmpty()
+  @IsString()
   password!: string;
 
   @IsNotEmpty()
+  @IsString()
   server!: string;
+}
+
+class m1ConfigData {
+  @IsNotEmpty()
+  @IsNumber()
+  jump!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  initial!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  threshold!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  limit!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  resistance!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  support!: number;
+}
+
+class m2ConfigData {
+  @IsNotEmpty()
+  @IsNumber()
+  jump!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  initial!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  threshold!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  limit!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  resistance!: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  support!: number;
+}
+export class SaveAccountPatternInput {
+  @IsNotEmpty()
+  @IsEnum(AccountPattern)
+  pattern!: string;
+
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type((val) => (val.object['pattern'] === 'M1' ? m1ConfigData : m2ConfigData))
+  config!: m1ConfigData | m2ConfigData;
 }
 
 export interface SaveRetrieveAccountOutput {
@@ -135,4 +255,6 @@ export interface SaveRetrieveAccountOutput {
   provisioningProfile: string;
   application: string;
   magic: number;
+  pattern?: string;
+  confif?: m1ConfigData | m2ConfigData;
 }
