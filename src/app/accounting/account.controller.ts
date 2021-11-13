@@ -12,7 +12,7 @@ import { Types } from 'mongoose';
 
 import { AccountService, SaveAccountInput } from '../common/database/services';
 
-@Controller('accounting/account')
+@Controller('account')
 export class AccountController {
   constructor(private accountService: AccountService) {}
 
@@ -27,6 +27,11 @@ export class AccountController {
       throw new BadRequestException(['Invalid account.']);
     }
     return await this.accountService.update(new Types.ObjectId(id), data);
+  }
+
+  @Get('/list')
+  async list() {
+    return await this.accountService.list();
   }
 
   @Get('/:id')

@@ -3,41 +3,41 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
-import { IsEnum, IsNotEmpty, MaxLength, ValidateNested } from 'class-validator';
+import { Types } from 'mongoose';
+import { IsNotEmpty, MaxLength } from 'class-validator';
 
 import { DatabaseService } from '../database.service';
 import { Account } from '../schemas';
-import { crossValidateCondition, textFormatter } from '../../util';
-import { Types } from 'mongoose';
-import { Type } from 'class-transformer';
 
 @Injectable()
 export class AccountService {
   constructor(private db: DatabaseService) {}
   async create(data: SaveAccountInput) {
-    const validateExistence = async (acc: Account) => {
-      const crossCondition = crossValidateCondition(acc, ['validateName']);
-      const dupe = await this.db.accountModel.findOne({ $or: crossCondition });
-      if (dupe) {
-        throw new BadRequestException(['Account already exist']);
-      }
-    };
+    const config = new ConfigService();
+    const provisioningProfile = config.get('PROVISIONING_PROFILE');
     const account = new Account({
       name: data.name,
-      validateName: textFormatter(data.name),
-      pattern: data.pattern,
-      config: data.config,
+      login: data.login,
+      password: data.password,
+      server: data.server,
+      provisioningProfile,
+      magic: 0,
+      application: 'MetaApi',
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    await validateExistence(account);
     const savedAccount = await this.db.accountModel.create(account);
     const result: SaveRetrieveAccountOutput = {
       id: savedAccount._id.toString(),
       name: savedAccount.name,
-      pattern: savedAccount.pattern,
-      config: savedAccount.config,
+      login: savedAccount.login,
+      password: savedAccount.password,
+      server: savedAccount.server,
+      provisioningProfile: savedAccount.provisioningProfile,
+      magic: savedAccount.magic,
+      application: savedAccount.application,
     };
     return result;
   }
@@ -51,22 +51,12 @@ export class AccountService {
   }
 
   async update(id: Types.ObjectId, data: SaveAccountInput) {
-    const validateExistence = async (acc: Account) => {
-      const crossCondition = crossValidateCondition(acc, ['validateName']);
-      const dupe = await this.db.accountModel.findOne({
-        $and: [{ _id: { $ne: id } }, { $or: crossCondition }],
-      });
-      if (dupe) {
-        throw new BadRequestException(['Account already exist']);
-      }
-    };
     const account = await this.findById(id);
     account.name = data.name;
-    account.validateName = textFormatter(data.name);
-    account.pattern = data.pattern;
-    account.config = data.config;
+    account.login = data.login;
+    account.password = data.password;
+    account.server = data.server;
     account.updatedAt = new Date();
-    await validateExistence(account);
     const updatedAccount = await this.db.accountModel.findOneAndUpdate(
       { _id: id },
       account,
@@ -82,8 +72,12 @@ export class AccountService {
     const result: SaveRetrieveAccountOutput = {
       id: updatedAccount.id,
       name: updatedAccount.name,
-      pattern: updatedAccount.pattern,
-      config: updatedAccount.config,
+      login: updatedAccount.login,
+      password: updatedAccount.password,
+      server: updatedAccount.server,
+      provisioningProfile: updatedAccount.provisioningProfile,
+      magic: updatedAccount.magic,
+      application: updatedAccount.application,
     };
     return result;
   }
@@ -91,80 +85,54 @@ export class AccountService {
   async retrieve(id: Types.ObjectId) {
     const account = await this.findById(id);
     const result: SaveRetrieveAccountOutput = {
-      id: account.id,
+      id: account._id.toString(),
       name: account.name,
-      pattern: account.pattern,
-      config: account.config,
+      login: account.login,
+      password: account.password,
+      server: account.server,
+      provisioningProfile: account.provisioningProfile,
+      magic: account.magic,
+      application: account.application,
     };
     return result;
   }
-}
 
-export enum AccountPattern {
-  M1 = 'M1',
-  M2 = 'M2',
-}
-
-class m1ConfigData {
-  @IsNotEmpty()
-  jump: number;
-
-  @IsNotEmpty()
-  init: number;
-
-  @IsNotEmpty()
-  threshold: number;
-
-  @IsNotEmpty()
-  limit: number;
-
-  @IsNotEmpty()
-  five: number;
-
-  @IsNotEmpty()
-  m1: number;
-}
-
-class m2ConfigData {
-  @IsNotEmpty()
-  jump: number;
-
-  @IsNotEmpty()
-  init: number;
-
-  @IsNotEmpty()
-  threshold: number;
-
-  @IsNotEmpty()
-  limit: number;
-
-  @IsNotEmpty()
-  five: number;
-
-  @IsNotEmpty()
-  m2: number;
+  async list() {
+    const accounts = await this.db.accountModel.find({});
+    return accounts.map((elm) => {
+      return {
+        id: elm._id.toString(),
+        name: elm.name,
+        login: elm.login,
+        server: elm.server,
+        password: elm.password,
+      };
+    });
+  }
 }
 
 export class SaveAccountInput {
   @IsNotEmpty()
   @MaxLength(50)
-  name: string;
+  name!: string;
 
   @IsNotEmpty()
-  @IsEnum(AccountPattern, { message: 'Invalid pattern selected' })
-  pattern: string;
+  login!: string;
 
   @IsNotEmpty()
-  @ValidateNested()
-  @Type((val) =>
-    val.object['pattern'] === AccountPattern.M1 ? m1ConfigData : m2ConfigData,
-  )
-  config: m1ConfigData | m2ConfigData;
+  password!: string;
+
+  @IsNotEmpty()
+  server!: string;
 }
 
 export interface SaveRetrieveAccountOutput {
   id: string;
   name: string;
-  pattern: string;
-  config: m2ConfigData | m1ConfigData;
+  login: string;
+  password: string;
+  server: string;
+  provisioningProfile: string;
+  application: string;
+  magic: number;
 }
