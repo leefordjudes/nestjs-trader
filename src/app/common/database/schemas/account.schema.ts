@@ -1,80 +1,6 @@
 import { Schema, SchemaFactory, Prop } from '@nestjs/mongoose';
 
 import { Types } from 'mongoose';
-import * as _ from 'lodash';
-
-import { AccountPattern } from '../services';
-
-@Schema({ _id: false })
-export class M1Config {
-  @Prop({ type: Number, required: true })
-  jump!: number;
-
-  @Prop({ type: Number, required: true })
-  limit!: number;
-
-  @Prop({ type: Number, required: true })
-  init!: number;
-
-  @Prop({ type: Number, required: true })
-  threshold!: number;
-
-  @Prop({ type: Number, required: true })
-  five!: number;
-
-  @Prop({ type: Number, required: true })
-  m1!: number;
-
-  constructor(data?: {
-    jump?: number;
-    limit?: number;
-    init: number;
-    threshold: number;
-    five: number;
-    m1: number;
-  }) {
-    if (data) {
-      _.assign(this, data);
-    }
-  }
-}
-const M1ConfigSchema = SchemaFactory.createForClass(M1Config);
-
-@Schema({ _id: false })
-export class M2Config {
-  @Prop({ type: Number, required: true })
-  jump!: number;
-
-  @Prop({ type: Number, required: true })
-  limit!: number;
-
-  @Prop({ type: Number, required: true })
-  init!: number;
-
-  @Prop({ type: Number, required: true })
-  threshold!: number;
-
-  @Prop({ type: Number, required: true })
-  five!: number;
-
-  @Prop({ type: Number, required: true })
-  m2!: number;
-
-  constructor(data?: {
-    jump?: number;
-    limit?: number;
-    init: number;
-    threshold: number;
-    five: number;
-    m2: number;
-  }) {
-    if (data) {
-      _.assign(this, data);
-    }
-  }
-}
-const M2ConfigSchema = SchemaFactory.createForClass(M2Config);
-
 @Schema()
 export class Account {
   _id?: Types.ObjectId;
@@ -83,13 +9,28 @@ export class Account {
   name!: string;
 
   @Prop({ type: String, required: true })
-  validateName!: string;
+  login!: string;
 
-  @Prop({ type: String, enum: AccountPattern, required: true })
-  pattern!: string;
+  @Prop({ type: String, required: true })
+  password!: string;
 
-  @Prop({ type: M1ConfigSchema || M2ConfigSchema, required: true })
-  config!: M1Config | M2Config;
+  @Prop({ type: String, required: true })
+  server!: string;
+
+  @Prop({ type: String, required: true })
+  provisioningProfile!: string;
+
+  @Prop({ type: Number, default: 0 })
+  magic!: number;
+
+  @Prop({ type: String, default: 'MetaApi' })
+  application!: string;
+
+  @Prop({ type: String, default: undefined })
+  pattern?: string;
+
+  @Prop({ type: String, default: undefined })
+  config?: string;
 
   @Prop({ type: Date, required: true })
   createdAt!: Date;
@@ -99,17 +40,23 @@ export class Account {
 
   constructor(data?: {
     name: string;
-    validateName: string;
-    pattern: string;
-    config: M1Config | M2Config;
+    login: string;
+    password: string;
+    server: string;
+    provisioningProfile: string;
+    magic: number;
+    application: string;
     createdAt: Date;
     updatedAt: Date;
   }) {
     if (data) {
       this.name = data.name;
-      this.pattern = data.pattern;
-      this.validateName = data.validateName;
-      this.config = data.config;
+      this.login = data.login;
+      this.password = data.password;
+      this.server = data.server;
+      this.provisioningProfile = data.provisioningProfile;
+      this.magic = data.magic;
+      this.application = data.application;
       this.createdAt = data.createdAt;
       this.updatedAt = data.updatedAt;
     }

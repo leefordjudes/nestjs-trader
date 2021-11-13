@@ -3,41 +3,49 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
-import { IsEnum, IsNotEmpty, MaxLength, ValidateNested } from 'class-validator';
+import { Types } from 'mongoose';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 import { DatabaseService } from '../database.service';
 import { Account } from '../schemas';
-import { crossValidateCondition, textFormatter } from '../../util';
-import { Types } from 'mongoose';
-import { Type } from 'class-transformer';
+import { configurations } from '../../../shared/fixtures/config/config';
+import { METHODS } from 'src/app/shared/fixtures/method';
 
 @Injectable()
 export class AccountService {
-  constructor(private db: DatabaseService) {}
+  constructor(private db: DatabaseService, private config: ConfigService) {}
   async create(data: SaveAccountInput) {
-    const validateExistence = async (acc: Account) => {
-      const crossCondition = crossValidateCondition(acc, ['validateName']);
-      const dupe = await this.db.accountModel.findOne({ $or: crossCondition });
-      if (dupe) {
-        throw new BadRequestException(['Account already exist']);
-      }
-    };
+    const provisioningProfile = this.config.get('PROVISIONING_PROFILE');
     const account = new Account({
       name: data.name,
-      validateName: textFormatter(data.name),
-      pattern: data.pattern,
-      config: data.config,
+      login: data.login,
+      password: data.password,
+      server: data.server,
+      provisioningProfile,
+      magic: 0,
+      application: 'MetaApi',
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    await validateExistence(account);
     const savedAccount = await this.db.accountModel.create(account);
     const result: SaveRetrieveAccountOutput = {
       id: savedAccount._id.toString(),
       name: savedAccount.name,
-      pattern: savedAccount.pattern,
-      config: savedAccount.config,
+      login: savedAccount.login,
+      password: savedAccount.password,
+      server: savedAccount.server,
+      provisioningProfile: savedAccount.provisioningProfile,
+      magic: savedAccount.magic,
+      application: savedAccount.application,
     };
     return result;
   }
@@ -51,22 +59,14 @@ export class AccountService {
   }
 
   async update(id: Types.ObjectId, data: SaveAccountInput) {
-    const validateExistence = async (acc: Account) => {
-      const crossCondition = crossValidateCondition(acc, ['validateName']);
-      const dupe = await this.db.accountModel.findOne({
-        $and: [{ _id: { $ne: id } }, { $or: crossCondition }],
-      });
-      if (dupe) {
-        throw new BadRequestException(['Account already exist']);
-      }
-    };
+    const provisioningProfile = this.config.get('PROVISIONING_PROFILE');
     const account = await this.findById(id);
     account.name = data.name;
-    account.validateName = textFormatter(data.name);
-    account.pattern = data.pattern;
-    account.config = data.config;
+    account.login = data.login;
+    account.password = data.password;
+    account.server = data.server;
     account.updatedAt = new Date();
-    await validateExistence(account);
+    account.provisioningProfile = provisioningProfile;
     const updatedAccount = await this.db.accountModel.findOneAndUpdate(
       { _id: id },
       account,
@@ -82,8 +82,12 @@ export class AccountService {
     const result: SaveRetrieveAccountOutput = {
       id: updatedAccount.id,
       name: updatedAccount.name,
-      pattern: updatedAccount.pattern,
-      config: updatedAccount.config,
+      login: updatedAccount.login,
+      password: updatedAccount.password,
+      server: updatedAccount.server,
+      provisioningProfile: updatedAccount.provisioningProfile,
+      magic: updatedAccount.magic,
+      application: updatedAccount.application,
     };
     return result;
   }
@@ -91,10 +95,68 @@ export class AccountService {
   async retrieve(id: Types.ObjectId) {
     const account = await this.findById(id);
     const result: SaveRetrieveAccountOutput = {
-      id: account.id,
+      id: account._id.toString(),
       name: account.name,
+      login: account.login,
+      password: account.password,
+      server: account.server,
+      provisioningProfile: account.provisioningProfile,
+      magic: account.magic,
+      application: account.application,
       pattern: account.pattern,
-      config: account.config,
+      confif: JSON.parse(account.config),
+    };
+    return result;
+  }
+
+  async list() {
+    const accounts = await this.db.accountModel.find({});
+    return accounts.map((elm) => {
+      return {
+        id: elm._id.toString(),
+        name: elm.name,
+        login: elm.login,
+        server: elm.server,
+        password: elm.password,
+      };
+    });
+  }
+
+  async retriveConfig(method?: string) {
+    if (method && ['M1', 'M2'].includes(method)) {
+      return configurations.find((m) => m.code === method);
+    }
+    return configurations;
+  }
+
+  async patternList() {
+    return METHODS;
+  }
+
+  async applyPattern(id: Types.ObjectId, data: SaveAccountPatternInput) {
+    const account = await this.findById(id);
+    account.pattern = data.pattern;
+    account.config = JSON.stringify(data.config);
+    const updatedAccount = await this.db.accountModel.findOneAndUpdate(
+      { _id: id },
+      account,
+      {
+        new: true,
+        overwrite: true,
+        runValidators: true,
+      },
+    );
+    const result: SaveRetrieveAccountOutput = {
+      id: updatedAccount.id,
+      name: updatedAccount.name,
+      login: updatedAccount.login,
+      password: updatedAccount.password,
+      server: updatedAccount.server,
+      provisioningProfile: updatedAccount.provisioningProfile,
+      magic: updatedAccount.magic,
+      application: updatedAccount.application,
+      pattern: updatedAccount.pattern,
+      confif: JSON.parse(updatedAccount.config),
     };
     return result;
   }
@@ -105,66 +167,94 @@ export enum AccountPattern {
   M2 = 'M2',
 }
 
+export class SaveAccountInput {
+  @IsNotEmpty()
+  name!: string;
+
+  @IsNotEmpty()
+  @IsString()
+  login!: string;
+
+  @IsNotEmpty()
+  @IsString()
+  password!: string;
+
+  @IsNotEmpty()
+  @IsString()
+  server!: string;
+}
+
 class m1ConfigData {
   @IsNotEmpty()
-  jump: number;
+  @IsNumber()
+  jump!: number;
 
   @IsNotEmpty()
-  init: number;
+  @IsNumber()
+  initial!: number;
 
   @IsNotEmpty()
-  threshold: number;
+  @IsNumber()
+  threshold!: number;
 
   @IsNotEmpty()
-  limit: number;
+  @IsNumber()
+  limit!: number;
 
   @IsNotEmpty()
-  five: number;
+  @IsNumber()
+  resistance!: number;
 
   @IsNotEmpty()
-  m1: number;
+  @IsNumber()
+  support!: number;
 }
 
 class m2ConfigData {
   @IsNotEmpty()
-  jump: number;
+  @IsNumber()
+  jump!: number;
 
   @IsNotEmpty()
-  init: number;
+  @IsNumber()
+  initial!: number;
 
   @IsNotEmpty()
-  threshold: number;
+  @IsNumber()
+  threshold!: number;
 
   @IsNotEmpty()
-  limit: number;
+  @IsNumber()
+  limit!: number;
 
   @IsNotEmpty()
-  five: number;
+  @IsNumber()
+  resistance!: number;
 
   @IsNotEmpty()
-  m2: number;
+  @IsNumber()
+  support!: number;
 }
-
-export class SaveAccountInput {
+export class SaveAccountPatternInput {
   @IsNotEmpty()
-  @MaxLength(50)
-  name: string;
-
-  @IsNotEmpty()
-  @IsEnum(AccountPattern, { message: 'Invalid pattern selected' })
-  pattern: string;
+  @IsEnum(AccountPattern)
+  pattern!: string;
 
   @IsNotEmpty()
   @ValidateNested()
-  @Type((val) =>
-    val.object['pattern'] === AccountPattern.M1 ? m1ConfigData : m2ConfigData,
-  )
-  config: m1ConfigData | m2ConfigData;
+  @Type((val) => (val.object['pattern'] === 'M1' ? m1ConfigData : m2ConfigData))
+  config!: m1ConfigData | m2ConfigData;
 }
 
 export interface SaveRetrieveAccountOutput {
   id: string;
   name: string;
-  pattern: string;
-  config: m2ConfigData | m1ConfigData;
+  login: string;
+  password: string;
+  server: string;
+  provisioningProfile: string;
+  application: string;
+  magic: number;
+  pattern?: string;
+  confif?: m1ConfigData | m2ConfigData;
 }
