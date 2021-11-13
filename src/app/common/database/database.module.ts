@@ -29,6 +29,13 @@ const providers = [DatabaseService, services.AccountService];
         collection: 'accounts',
       },
     ]),
+    MongooseModule.forFeature([
+      {
+        name: 'User',
+        schema: schemas.UserSchema,
+        collection: 'users',
+      },
+    ]),
   ],
   providers,
   exports: providers,

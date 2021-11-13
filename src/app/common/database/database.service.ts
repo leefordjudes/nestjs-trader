@@ -9,6 +9,8 @@ export class DatabaseService {
   constructor(
     @InjectModel('Account')
     public readonly accountModel: Model<schemas.Account & Document>,
+    @InjectModel('User')
+    public readonly userModel: Model<schemas.User & Document>,
   ) {}
 
   async startSession() {
